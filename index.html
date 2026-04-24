@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Paletteer</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <main class="app">
+    <div class="card">
+
+      <!-- Header -->
+      <header class="topbar">
+        <div class="title-row">
+          <div>
+            <h1 class="app-title">Paletteer</h1>
+            <p class="app-subtitle">Build and export color palettes.</p>
+          </div>
+
+          <div class="settings">
+            <button id="settingsBtn" type="button" class="icon-btn" aria-label="Settings" aria-haspopup="menu" aria-expanded="false">
+              <svg class="icon" aria-hidden="true" viewBox="0 0 24 24">
+                <use href="#i-settings"></use>
+              </svg>
+            </button>
+
+            <div id="settingsMenu" class="settings-menu" role="menu" hidden>
+              <button id="themeToggleBtn" type="button" class="btn secondary small" role="menuitem">
+                <span class="btn-label">Theme: System</span>
+              </button>
+
+              <button id="batchImportBtn" type="button" class="btn secondary small" role="menuitem">
+                Batch import…
+              </button>
+
+              <button id="factoryResetBtn" type="button" class="btn secondary small danger" role="menuitem">
+                Factory reset
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Current Palette -->
+      <section class="section">
+        <div class="plt-add-row">
+          <div class="plt-add-input-wrap">
+            <input id="colorAddInput" type="text" class="plt-add-input"
+              placeholder="#hex · rgb() · hsl() · color name"
+              autocomplete="off" spellcheck="false" />
+            <span id="colorInputSwatch" class="plt-input-swatch" hidden></span>
+            <div id="colorSuggestions" class="plt-suggestions" hidden></div>
+          </div>
+          <button id="eyedropperBtn" type="button" class="btn secondary small" title="Pick color from screen" hidden>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" style="margin:0;vertical-align:middle"><use href="#i-eyedropper"></use></svg>
+          </button>
+          <button id="addColorBtn" type="button" class="btn primary small">Add</button>
+        </div>
+
+        <div id="paletteTrack" class="plt-track" role="list" aria-label="Palette colors"></div>
+
+        <div id="paletteActions" class="plt-palette-actions" hidden>
+          <button id="undoBtn" type="button" class="btn secondary small" title="Undo (Ctrl+Z)" disabled>↩</button>
+          <button id="redoBtn" type="button" class="btn secondary small" title="Redo (Ctrl+Y)" disabled>↪</button>
+          <select id="sortSelect" class="btn secondary small" title="Sort palette">
+            <option value="">Sort colors…</option>
+            <option value="hue">By hue</option>
+            <option value="lightness">By lightness</option>
+            <option value="saturation">By saturation</option>
+            <option value="reverse">Reverse</option>
+          </select>
+          <button id="clearPaletteBtn" type="button" class="btn secondary small danger">Clear</button>
+        </div>
+      </section>
+
+      <!-- Selected Color Panel (revealed when a tile is selected) -->
+      <section id="tintShadeSection" class="section" hidden>
+        <div class="plt-selected-header">
+          <span class="setting-label">Selected Color</span>
+          <span id="selectedColorName" class="plt-selected-name"></span>
+          <div class="plt-selected-actions">
+            <span id="tintShadeSource" class="plt-tint-source-label"></span>
+            <button id="selectedUseAsSeedBtn" type="button" class="btn secondary small">Generate Harmony</button>
+          </div>
+        </div>
+        <div id="selectedColorInfo" class="plt-selected-info mt-12"></div>
+        <div id="selectedWcagRow" class="plt-selected-wcag mt-12"></div>
+        <p class="plt-selected-shades-head">Tints &amp; Shades</p>
+        <div id="tintShadeTrack" class="plt-track plt-track--small plt-track--preview" role="list" aria-label="Tints and shades"></div>
+      </section>
+
+      <!-- Generate (tabbed: Harmony · Scale · Extract from Image) -->
+      <details class="details-card section" id="generateDetails">
+        <summary>Generate</summary>
+        <div class="details-body">
+          <div class="plt-tab-nav" role="tablist">
+            <button class="plt-tab active" data-tab="harmony" type="button" role="tab">Harmony</button>
+            <button class="plt-tab" data-tab="scale" type="button" role="tab">Scale</button>
+            <button class="plt-tab" data-tab="random" type="button" role="tab">Random</button>
+            <button class="plt-tab" data-tab="mix" type="button" role="tab">Mix</button>
+            <button class="plt-tab" data-tab="extract" type="button" role="tab">Extract from Image</button>
+          </div>
+
+          <div id="tabHarmony" class="plt-tab-panel" data-panel="harmony">
+            <div class="setting-row">
+              <label class="setting-label" for="seedColorInput">Seed color</label>
+              <input id="seedColorInput" type="color" value="#6366f1" class="plt-color-picker-large" />
+            </div>
+
+            <div class="setting-row mt-12">
+              <span class="setting-label">Harmony</span>
+            </div>
+            <div class="choice-row mt-12" role="radiogroup" aria-label="Harmony type">
+              <label class="choice-pill">
+                <input type="radio" name="harmonyType" value="complementary" checked />
+                <span class="choice-pill-title">Complementary</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="harmonyType" value="analogous" />
+                <span class="choice-pill-title">Analogous</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="harmonyType" value="triadic" />
+                <span class="choice-pill-title">Triadic</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="harmonyType" value="tetradic" />
+                <span class="choice-pill-title">Tetradic</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="harmonyType" value="split-complementary" />
+                <span class="choice-pill-title">Split Comp.</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="harmonyType" value="monochromatic" />
+                <span class="choice-pill-title">Mono</span>
+              </label>
+            </div>
+            <p id="harmonyDesc" class="plt-harmony-desc"></p>
+
+            <div id="harmonyPreviewTrack" class="plt-track plt-track--small plt-track--preview mt-12" role="list" aria-label="Harmony preview"></div>
+
+            <div class="actions mt-12">
+              <button id="harmonyApplyBtn" type="button" class="btn primary small">Replace palette</button>
+              <button id="harmonyAddBtn" type="button" class="btn secondary small">Add to palette</button>
+            </div>
+          </div>
+
+          <div id="tabScale" class="plt-tab-panel" data-panel="scale" hidden>
+            <div class="setting-row">
+              <span class="setting-label">Start → End</span>
+              <div class="plt-scale-pickers">
+                <input id="scaleStartInput" type="color" value="#6366f1" class="plt-color-picker-large" />
+                <button id="scaleSwapBtn" type="button" class="btn secondary small" title="Swap colors">⇄</button>
+                <input id="scaleEndInput" type="color" value="#ec4899" class="plt-color-picker-large" />
+              </div>
+            </div>
+            <div class="setting-row mt-12">
+              <label class="setting-label" for="scaleStepsInput">Steps</label>
+              <input id="scaleStepsInput" type="number" min="2" max="16" value="7" class="plt-num-input" style="width:72px" />
+            </div>
+            <div id="scalePreviewTrack" class="plt-track plt-track--small plt-track--preview mt-12" role="list" aria-label="Color scale preview"></div>
+            <div class="actions mt-12">
+              <button id="scaleAddBtn" type="button" class="btn primary small">Add to palette</button>
+              <button id="scaleReplaceBtn" type="button" class="btn secondary small">Replace palette</button>
+            </div>
+          </div>
+
+          <div id="tabRandom" class="plt-tab-panel" data-panel="random" hidden>
+            <div class="setting-row">
+              <label class="setting-label" for="randomCountInput">Colors</label>
+              <input id="randomCountInput" type="number" min="2" max="16" value="5" class="plt-num-input" style="width:72px" />
+            </div>
+            <div class="setting-row mt-12">
+              <span class="setting-label">Mood</span>
+              <div class="choice-row setting-choices" role="radiogroup" aria-label="Random palette mood">
+                <label class="choice-pill">
+                  <input type="radio" name="randomMood" value="any" checked />
+                  <span class="choice-pill-title">Any</span>
+                </label>
+                <label class="choice-pill">
+                  <input type="radio" name="randomMood" value="pastel" />
+                  <span class="choice-pill-title">Pastel</span>
+                </label>
+                <label class="choice-pill">
+                  <input type="radio" name="randomMood" value="vibrant" />
+                  <span class="choice-pill-title">Vibrant</span>
+                </label>
+                <label class="choice-pill">
+                  <input type="radio" name="randomMood" value="earth" />
+                  <span class="choice-pill-title">Earth</span>
+                </label>
+                <label class="choice-pill">
+                  <input type="radio" name="randomMood" value="muted" />
+                  <span class="choice-pill-title">Muted</span>
+                </label>
+                <label class="choice-pill">
+                  <input type="radio" name="randomMood" value="neon" />
+                  <span class="choice-pill-title">Neon</span>
+                </label>
+              </div>
+            </div>
+            <div id="randomPreviewTrack" class="plt-track plt-track--small plt-track--preview mt-12" role="list" aria-label="Random palette preview"></div>
+            <div class="actions mt-12">
+              <button id="randomGenerateBtn" type="button" class="btn secondary small">Regenerate</button>
+              <button id="randomApplyBtn" type="button" class="btn primary small">Replace palette</button>
+              <button id="randomAddBtn" type="button" class="btn secondary small">Add to palette</button>
+            </div>
+          </div>
+
+          <div id="tabMix" class="plt-tab-panel" data-panel="mix" hidden>
+            <div class="setting-row">
+              <span class="setting-label">Colors</span>
+              <div class="plt-scale-pickers">
+                <input id="mixColorA" type="color" value="#6366f1" class="plt-color-picker-large" />
+                <span style="opacity:0.5; font-size:18px; align-self:center;">→</span>
+                <input id="mixColorB" type="color" value="#ec4899" class="plt-color-picker-large" />
+              </div>
+            </div>
+            <div class="setting-row mt-12">
+              <label class="setting-label" for="mixRatioInput">Mix ratio</label>
+              <input type="range" id="mixRatioInput" min="0" max="100" value="50" class="plt-adj-slider" list="midTick" />
+              <span id="mixRatioVal" class="plt-adj-val">50%</span>
+            </div>
+            <div id="mixPreviewTrack" class="plt-track plt-track--small plt-track--preview mt-12" role="list" aria-label="Mix preview"></div>
+            <div class="actions mt-12">
+              <button id="mixAddBtn" type="button" class="btn primary small">Add mix to palette</button>
+            </div>
+          </div>
+
+          <div id="tabExtract" class="plt-tab-panel" data-panel="extract" hidden>
+            <div id="imageDropZone" class="dropzone plt-image-dropzone">
+              Drop an image here, or
+              <button id="imageChooseBtn" type="button" class="btn-text">browse</button>
+            </div>
+            <input id="imageFileInput" type="file" accept="image/*" hidden />
+
+            <div id="imageWorkArea" class="plt-image-work-area" hidden>
+              <img id="imagePreview" class="plt-image-preview" alt="Uploaded image preview" />
+              <div class="plt-image-controls">
+                <div class="setting-row">
+                  <label class="setting-label" for="extractCountInput">Colors to extract</label>
+                  <input id="extractCountInput" type="number" min="2" max="16" value="6"
+                    class="plt-num-input" style="width:72px" />
+                </div>
+                <div id="extractPreviewTrack" class="plt-track plt-track--small plt-track--preview mt-12"
+                  role="list" aria-label="Extracted colors preview"></div>
+                <div class="actions mt-12">
+                  <button id="extractApplyBtn" type="button" class="btn primary small">Replace palette</button>
+                  <button id="extractAddBtn" type="button" class="btn secondary small">Add to palette</button>
+                  <button id="imageRemoveBtn" type="button" class="btn secondary small danger">Remove image</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </details>
+
+      <!-- Adjustments -->
+      <details class="details-card section" id="adjustDetails">
+        <summary>Adjustments</summary>
+        <div class="details-body">
+          <div class="plt-adj-row">
+            <label class="plt-adj-label" for="adjHueShift">Hue shift</label>
+            <input type="range" id="adjHueShift" min="-180" max="180" value="0" class="plt-adj-slider" list="zeroTick" />
+            <span id="adjHueVal" class="plt-adj-val">0°</span>
+          </div>
+          <div class="plt-adj-row mt-12">
+            <label class="plt-adj-label" for="adjSat">Saturation</label>
+            <input type="range" id="adjSat" min="-100" max="100" value="0" class="plt-adj-slider" list="zeroTick" />
+            <span id="adjSatVal" class="plt-adj-val">0%</span>
+          </div>
+          <div class="plt-adj-row mt-12">
+            <label class="plt-adj-label" for="adjLum">Lightness</label>
+            <input type="range" id="adjLum" min="-100" max="100" value="0" class="plt-adj-slider" list="zeroTick" />
+            <span id="adjLumVal" class="plt-adj-val">0%</span>
+          </div>
+          <div id="adjPreviewTrack" class="plt-track plt-track--small plt-track--preview mt-12" role="list" aria-label="Adjusted colors preview"></div>
+          <div class="actions mt-12">
+            <button id="adjApplyBtn" type="button" class="btn primary small">Apply to palette</button>
+            <button id="adjResetBtn" type="button" class="btn secondary small">Reset sliders</button>
+            <button id="adjRandomizeBtn" type="button" class="btn secondary small">Randomize unlocked</button>
+          </div>
+        </div>
+      </details>
+
+      <!-- Accessibility (tabbed: WCAG Contrast · Color Blindness) -->
+      <details class="details-card section" id="accessibilityDetails">
+        <summary>Accessibility <span id="wcagHealthBadge" class="plt-badge" hidden></span></summary>
+        <div class="details-body">
+          <div class="plt-tab-nav" role="tablist">
+            <button class="plt-tab active" data-tab="wcag" type="button" role="tab">WCAG Contrast</button>
+            <button class="plt-tab" data-tab="colorblind" type="button" role="tab">Color Blindness</button>
+          </div>
+          <div id="tabWcag" class="plt-tab-panel" data-panel="wcag">
+            <div id="wcagBody" class="mt-12"></div>
+          </div>
+          <div id="tabColorblind" class="plt-tab-panel" data-panel="colorblind" hidden>
+            <div id="colorblindBody" class="mt-12"></div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Export & Save -->
+      <details class="details-card section" id="outputDetails">
+        <summary>Export &amp; Save <span id="savedCount" class="plt-badge" hidden></span></summary>
+        <div class="details-body">
+          <div class="setting-row">
+            <span class="setting-label">Format</span>
+            <div class="choice-row setting-choices" role="radiogroup" aria-label="Export format">
+              <label class="choice-pill">
+                <input type="radio" name="exportFormat" value="css" checked />
+                <span class="choice-pill-title">CSS Vars</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="exportFormat" value="tailwind" />
+                <span class="choice-pill-title">Tailwind</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="exportFormat" value="scss" />
+                <span class="choice-pill-title">SCSS</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="exportFormat" value="hex" />
+                <span class="choice-pill-title">Hex List</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="exportFormat" value="json" />
+                <span class="choice-pill-title">JSON</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="exportFormat" value="gradient" />
+                <span class="choice-pill-title">Gradient</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="exportFormat" value="android" />
+                <span class="choice-pill-title">Android XML</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="exportFormat" value="swift" />
+                <span class="choice-pill-title">Swift</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="exportFormat" value="tokens" />
+                <span class="choice-pill-title">Design Tokens</span>
+              </label>
+              <label class="choice-pill">
+                <input type="radio" name="exportFormat" value="custom" />
+                <span class="choice-pill-title">Custom</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="setting-row mt-12">
+            <label class="setting-label" for="exportPrefixInput">Prefix / name</label>
+            <input id="exportPrefixInput" type="text" value="color" placeholder="color"
+              style="max-width:200px" />
+          </div>
+
+          <div id="exportColorNameRow" class="setting-row mt-12">
+            <span class="setting-label">Color names</span>
+            <label class="plt-inline-check">
+              <input type="checkbox" id="exportColorNames" />
+              <span>Include nearest color name</span>
+            </label>
+          </div>
+
+          <div id="exportTextColorRow" class="setting-row mt-12">
+            <span class="setting-label">Text pairing</span>
+            <label class="plt-inline-check">
+              <input type="checkbox" id="exportTextColor" />
+              <span>Include text color pairing</span>
+            </label>
+          </div>
+
+          <div id="customTemplateRow" class="setting-row mt-12" hidden>
+            <label class="setting-label" for="customTemplateInput">Template</label>
+            <div style="flex:1">
+              <textarea id="customTemplateInput" class="plt-dialog-textarea" rows="3"
+                placeholder="--{{name}}: {{hex}};" spellcheck="false"></textarea>
+              <p class="plt-harmony-desc" style="margin-top:4px;">Variables: {{hex}} {{HEX}} {{name}} {{colorName}} {{r}} {{g}} {{b}} {{h}} {{s}} {{l}} {{index}} {{text}}</p>
+            </div>
+          </div>
+
+          <pre id="exportPreview" class="plt-export-preview mt-12"></pre>
+
+          <div class="actions mt-12">
+            <button id="exportCopyBtn" type="button" class="btn secondary small">Copy</button>
+            <button id="exportDownloadBtn" type="button" class="btn primary small">Download</button>
+            <button id="exportPngBtn" type="button" class="btn secondary small">Swatch PNG</button>
+            <button id="exportShareBtn" type="button" class="btn secondary small">Copy link</button>
+          </div>
+
+          <div class="plt-output-divider"></div>
+
+          <div class="plt-save-row">
+            <input id="paletteNameInput" type="text" placeholder="Name this palette…" style="flex:1" />
+            <button id="savePaletteBtn" type="button" class="btn primary small">Save</button>
+          </div>
+          <input id="savedSearchInput" type="text" placeholder="Search saved palettes…" class="plt-search-input mt-12" />
+          <div id="savedList" class="plt-saved-list mt-12"></div>
+        </div>
+      </details>
+
+    </div><!-- /card -->
+  </main><!-- /app -->
+
+  <!-- Batch Import Dialog -->
+  <dialog id="batchDialog" class="plt-dialog">
+    <div class="plt-dialog-inner">
+      <h3 class="plt-dialog-title">Batch Import</h3>
+      <p class="plt-dialog-hint">Paste hex values separated by commas, spaces, or newlines.</p>
+      <textarea id="batchInput" class="plt-dialog-textarea" placeholder="#6366f1, #8b5cf6, #ec4899&#10;or one per line" rows="6"></textarea>
+      <div class="actions mt-12">
+        <button id="batchAddBtn" type="button" class="btn primary small">Add to palette</button>
+        <button id="batchReplaceBtn" type="button" class="btn secondary small">Replace palette</button>
+        <button id="batchCancelBtn" type="button" class="btn secondary small">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <datalist id="zeroTick"><option value="0"></option></datalist>
+  <datalist id="midTick"><option value="50"></option></datalist>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- SVG sprite -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="i-settings" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M12 16a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2m0-6a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2m0-6a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2"></path>
+    </symbol>
+    <symbol id="i-copy" viewBox="0 0 12 12">
+      <path fill="currentColor" d="M11 4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm0 1H5v6h6zM7 0a1 1 0 0 1 1 1v1.5a.5.5 0 0 1-1 0V1H1v6h1.5a.5.5 0 0 1 0 1H1a1 1 0 0 1-1-1V1a1 1 0 0 1 1-1z"/>
+    </symbol>
+    <symbol id="i-clear" viewBox="0 0 16 16">
+      <path fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-width="2" d="M3 13L13 3m0 10L3 3"/>
+    </symbol>
+    <symbol id="i-drag" viewBox="0 0 16 16">
+      <circle cx="5" cy="4" r="1.5" fill="currentColor"/>
+      <circle cx="11" cy="4" r="1.5" fill="currentColor"/>
+      <circle cx="5" cy="8" r="1.5" fill="currentColor"/>
+      <circle cx="11" cy="8" r="1.5" fill="currentColor"/>
+      <circle cx="5" cy="12" r="1.5" fill="currentColor"/>
+      <circle cx="11" cy="12" r="1.5" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-eyedropper" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M20.71 5.63l-2.34-2.34a1 1 0 0 0-1.41 0l-3.12 3.12-1.41-1.42-1.42 1.42 1.41 1.41-6.6 6.6A2 2 0 0 0 5 15.59V18h2.41a2 2 0 0 0 1.42-.59l6.6-6.6 1.41 1.41 1.42-1.42-1.42-1.41 3.12-3.12a1 1 0 0 0 0-1.41zM7.41 17H7v-.41l6.6-6.6.41.41z"/>
+    </symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+    </symbol>
+    <symbol id="i-duplicate" viewBox="0 0 14 14">
+      <rect x="4" y="1" width="8" height="9" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <rect x="1" y="4" width="8" height="9" rx="1.2" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.5"/>
+    </symbol>
+    <symbol id="i-swap" viewBox="0 0 16 16">
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 5.5h10M9.5 2.5l3 3-3 3M13 10.5H3M6.5 7.5l-3 3 3 3"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 12 12">
+      <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 1v10M1 6h10"/>
+    </symbol>
+  </svg>
+
+  <script src="./lib/theme.js"></script>
+  <script src="./lib/state.js"></script>
+  <script src="./lib/palette.js"></script>
+  <script src="./lib/harmony.js"></script>
+  <script src="./lib/image.js"></script>
+  <script src="./lib/wcag.js"></script>
+  <script src="./lib/export.js"></script>
+  <script src="./lib/names.js"></script>
+  <script src="./lib/colorblind.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

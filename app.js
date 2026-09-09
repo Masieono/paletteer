@@ -1001,7 +1001,7 @@ function renderProximity() {
   }
 
   const metric = proximityMetricSelect.value;
-  const neighbors = App.names.findNearestN(hex, { metric, n: 30 });
+  const neighbors = App.names.findNearestN(hex, { metric, n: 32 });
 
   proximityCurrentHex = hex;
   proximityCurrentNeighbors = neighbors;
@@ -1127,9 +1127,13 @@ function drawProximityPlot(hex, neighbors, highlightIdx = null) {
   const accentColor = rootStyles.getPropertyValue("--accent").trim() || "rgba(80,140,255,0.95)";
 
   const cx = size / 2, cy = size / 2;
+  // Everything below was tuned by eye at a 420px baseline — scale it so a
+  // much wider canvas doesn't end up with tiny dots floating in empty space.
+  const scale = Math.min(2, Math.max(0.75, size / 420));
+
   // Margin sized to fit "hue +"/"hue -" outside the circle on the sides,
   // matching how "lighter"/"darker" sit outside it on the top/bottom.
-  const margin = 46;
+  const margin = 46 * scale;
   const maxRadius = size / 2 - margin;
 
   ctx.strokeStyle = gridColor;
@@ -1145,16 +1149,16 @@ function drawProximityPlot(hex, neighbors, highlightIdx = null) {
   });
 
   ctx.fillStyle = labelColor;
-  ctx.font = "700 11px sans-serif";
+  ctx.font = `700 ${Math.round(11 * scale)}px sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("lighter", cx, cy - maxRadius - 12);
-  ctx.fillText("darker", cx, cy + maxRadius + 20);
+  ctx.fillText("lighter", cx, cy - maxRadius - 12 * scale);
+  ctx.fillText("darker", cx, cy + maxRadius + 20 * scale);
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText("hue +", cx + maxRadius + 6, cy);
+  ctx.fillText("hue +", cx + maxRadius + 6 * scale, cy);
   ctx.textAlign = "right";
-  ctx.fillText("hue −", cx - maxRadius - 6, cy);
+  ctx.fillText("hue −", cx - maxRadius - 6 * scale, cy);
   ctx.textBaseline = "alphabetic";
 
   const baseHsl = App.palette.hexToHsl(hex);
@@ -1179,13 +1183,13 @@ function drawProximityPlot(hex, neighbors, highlightIdx = null) {
     const y = cy - (dl / maxDl) * maxRadius * 0.9;
 
     const closeness = 1 - (nb.distance / maxDist);
-    const r = 3 + closeness * 6;
+    const r = (3 + closeness * 6) * scale;
     proximityDots.push({ x, y, r });
 
     ctx.beginPath();
     ctx.fillStyle = nb.hex;
     ctx.strokeStyle = "rgba(0,0,0,0.35)";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = scale;
     ctx.globalAlpha = 0.55 + closeness * 0.45;
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
@@ -1195,8 +1199,8 @@ function drawProximityPlot(hex, neighbors, highlightIdx = null) {
       ctx.globalAlpha = 1;
       ctx.beginPath();
       ctx.strokeStyle = accentColor;
-      ctx.lineWidth = 2.5;
-      ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+      ctx.lineWidth = 2.5 * scale;
+      ctx.arc(x, y, r + 4 * scale, 0, Math.PI * 2);
       ctx.stroke();
     }
   });
@@ -1205,8 +1209,8 @@ function drawProximityPlot(hex, neighbors, highlightIdx = null) {
   ctx.beginPath();
   ctx.fillStyle = hex;
   ctx.strokeStyle = labelColor;
-  ctx.lineWidth = 2;
-  ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+  ctx.lineWidth = 2 * scale;
+  ctx.arc(cx, cy, 8 * scale, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 }

@@ -1595,8 +1595,6 @@ select.btn option {
 .plt-proximity-plot-wrap {
   position: relative;
   width: 100%;
-  max-width: 420px;
-  margin: 0 auto;
 }
 
 .plt-proximity-plot {

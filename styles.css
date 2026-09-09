@@ -1076,6 +1076,28 @@ html[data-theme="light"] .settings-menu {
 
 .plt-add-input.has-swatch { padding-right: 36px; }
 
+/* Nearest/closest color name preview, sitting just left of the swatch */
+.plt-input-name {
+  position: absolute;
+  right: 37px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.plt-add-input.has-name { padding-right: 155px; }
+
+@media (max-width: 520px) {
+  .plt-input-name { max-width: 64px; font-size: 10px; }
+  .plt-add-input.has-name { padding-right: 108px; }
+}
+
 /* ------------------------------------------------------------------ */
 /* Tint & shade                                                         */
 /* ------------------------------------------------------------------ */
@@ -1604,6 +1626,28 @@ select.btn option {
   border-radius: var(--radius-1);
   border: 1px solid var(--border-soft);
   background: var(--bg-soft);
+}
+
+.plt-proximity-plot:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+#proximityTrack .plt-tile--small:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .plt-proximity-tooltip {

@@ -51,6 +51,7 @@
             <input id="colorAddInput" type="text" class="plt-add-input"
               placeholder="#hex · rgb() · hsl() · color name"
               autocomplete="off" spellcheck="false" />
+            <span id="colorInputName" class="plt-input-name" hidden></span>
             <span id="colorInputSwatch" class="plt-input-swatch" hidden></span>
             <div id="colorSuggestions" class="plt-suggestions" hidden></div>
           </div>
@@ -101,9 +102,11 @@
           </select>
         </div>
         <div class="plt-proximity-plot-wrap mt-12">
-          <canvas id="proximityPlot" class="plt-proximity-plot" role="img" aria-label="Plot of similar named colors relative to the selected color. Hover or tap a dot to identify it."></canvas>
+          <canvas id="proximityPlot" class="plt-proximity-plot" tabindex="0" role="img"
+            aria-label="Compass plot of similar named colors relative to the selected color. Use arrow keys to move between colors, Enter to pin the highlighted one, Escape to clear."></canvas>
           <div id="proximityTooltip" class="plt-proximity-tooltip" hidden></div>
         </div>
+        <span id="proximityLiveRegion" class="sr-only" aria-live="polite"></span>
         <div id="proximityTrack" class="plt-track plt-track--small plt-track--preview mt-12" role="list" aria-label="Similar named colors"></div>
       </section>
 

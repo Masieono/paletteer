@@ -9,6 +9,7 @@ const factoryResetBtn     = document.getElementById("factoryResetBtn");
 const paletteTrack        = document.getElementById("paletteTrack");
 const colorAddInput       = document.getElementById("colorAddInput");
 const colorInputSwatch    = document.getElementById("colorInputSwatch");
+const colorInputName      = document.getElementById("colorInputName");
 const colorSuggestions    = document.getElementById("colorSuggestions");
 const eyedropperBtn       = document.getElementById("eyedropperBtn");
 const addColorBtn         = document.getElementById("addColorBtn");
@@ -28,12 +29,14 @@ const proximityMetricSelect = document.getElementById("proximityMetricSelect");
 const proximityPlot         = document.getElementById("proximityPlot");
 const proximityTrack        = document.getElementById("proximityTrack");
 const proximityTooltip      = document.getElementById("proximityTooltip");
+const proximityLiveRegion   = document.getElementById("proximityLiveRegion");
 
 let proximityCurrentHex = null;
 let proximityCurrentNeighbors = [];
 let proximityDots = []; // [{x, y, r}] in canvas CSS-pixel space, indexed like proximityCurrentNeighbors
 let proximityHoverIdx = null;  // transient — mouse over a dot or its list tile
-let proximityPinnedIdx = null; // sticky — set by clicking a dot (also serves touch/tap)
+let proximityFocusIdx = null;  // transient — keyboard focus on the canvas or a list tile
+let proximityPinnedIdx = null; // sticky — set by clicking/activating a dot (also serves touch/tap)
 
 const wcagHealthBadge     = document.getElementById("wcagHealthBadge");
 
@@ -212,6 +215,7 @@ renderAll();
 // Load color names in background; update tile names and export preview once loaded
 App.names.load().then(() => {
   updateAllTileNames();
+  updateInputSwatch(colorAddInput.value);
   if (exportColorNames.checked) renderExportPreview();
 });
 
@@ -1006,13 +1010,36 @@ function renderProximity() {
   proximityCurrentHex = hex;
   proximityCurrentNeighbors = neighbors;
   proximityHoverIdx = null;
+  proximityFocusIdx = null;
   proximityPinnedIdx = null;
 
   proximityTrack.innerHTML = "";
   neighbors.forEach((nb, i) => {
     const tile = makeTintShadeTile(nb.hex, { name: nb.name, badge: `${Math.round(nb.percent)}%` });
+    // Roving tabindex: only one tile is a tab stop at a time (starts at the
+    // first/closest), so Tab enters/exits the list in one press each way —
+    // arrow keys move the "current" tile within it.
+    tile.tabIndex = i === 0 ? 0 : -1;
+    tile.setAttribute("role", "button");
+    tile.setAttribute("aria-label", `${nb.name}, ${nb.hex}, ${Math.round(nb.percent)}% similar. Press Enter to add to palette.`);
     tile.addEventListener("mouseenter", () => { proximityHoverIdx = i; updateProximityDisplay(); });
     tile.addEventListener("mouseleave", () => { proximityHoverIdx = null; updateProximityDisplay(); });
+    tile.addEventListener("focus", () => {
+      proximityFocusIdx = i;
+      setProximityRovingTabIndex(i);
+      updateProximityDisplay();
+    });
+    tile.addEventListener("blur", () => { proximityFocusIdx = null; updateProximityDisplay(); });
+    tile.addEventListener("keydown", (e) => {
+      // stopPropagation so the app's global ArrowLeft/Right palette-tile
+      // navigation (bound on document) doesn't also fire and re-render
+      // this list out from under us mid-navigation.
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); tile.click(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); e.stopPropagation(); focusProximityTile(i + 1); }
+      else if (e.key === "ArrowLeft")  { e.preventDefault(); e.stopPropagation(); focusProximityTile(i - 1); }
+      else if (e.key === "ArrowDown")  { e.preventDefault(); e.stopPropagation(); focusProximityTile(i + 8); }
+      else if (e.key === "ArrowUp")    { e.preventDefault(); e.stopPropagation(); focusProximityTile(i - 8); }
+    });
     proximityTrack.appendChild(tile);
   });
 
@@ -1020,11 +1047,25 @@ function renderProximity() {
   updateProximityTooltip(null);
 }
 
-// Effective highlight = whichever dot is under the mouse, falling back to a
-// pinned (clicked) one — keeps compass dots and list tiles identifiable
-// even when they're too visually similar to tell apart on sight.
+function setProximityRovingTabIndex(idx) {
+  Array.from(proximityTrack.children).forEach((tile, i) => {
+    tile.tabIndex = i === idx ? 0 : -1;
+  });
+}
+
+function focusProximityTile(idx) {
+  const children = proximityTrack.children;
+  if (!children.length) return;
+  const clamped = ((idx % children.length) + children.length) % children.length;
+  children[clamped].focus();
+}
+
+// Effective highlight = whichever dot is under the mouse, falling back to
+// keyboard focus, then a pinned (clicked/activated) one — keeps compass dots
+// and list tiles identifiable even when they're too visually similar to tell
+// apart on sight.
 function updateProximityDisplay() {
-  const idx = proximityHoverIdx !== null ? proximityHoverIdx : proximityPinnedIdx;
+  const idx = proximityHoverIdx ?? proximityFocusIdx ?? proximityPinnedIdx;
   Array.from(proximityTrack.children).forEach((tile, i) => {
     tile.classList.toggle("plt-tile--proximity-active", i === idx);
   });
@@ -1033,14 +1074,16 @@ function updateProximityDisplay() {
 }
 
 function updateProximityTooltip(idx) {
-  if (idx === null || !proximityCurrentNeighbors[idx]) {
+  if (idx === null || idx === undefined || !proximityCurrentNeighbors[idx]) {
     proximityTooltip.hidden = true;
+    proximityLiveRegion.textContent = "";
     return;
   }
   const nb = proximityCurrentNeighbors[idx];
   const dot = proximityDots[idx];
   proximityTooltip.hidden = false;
   proximityTooltip.innerHTML = "";
+  proximityLiveRegion.textContent = `${nb.name}, ${nb.hex}, ${Math.round(nb.percent)}% similar`;
 
   const swatch = document.createElement("span");
   swatch.className = "plt-proximity-tooltip-swatch";
@@ -1096,6 +1139,47 @@ proximityPlot.addEventListener("click", (e) => {
   const idx = hitTestProximity(e);
   proximityPinnedIdx = (idx !== null && proximityPinnedIdx === idx) ? null : idx;
   updateProximityDisplay();
+});
+
+proximityPlot.addEventListener("focus", () => {
+  if (proximityFocusIdx === null) {
+    proximityFocusIdx = proximityPinnedIdx ?? 0;
+    updateProximityDisplay();
+  }
+});
+
+proximityPlot.addEventListener("blur", () => {
+  if (proximityFocusIdx !== null) { proximityFocusIdx = null; updateProximityDisplay(); }
+});
+
+proximityPlot.addEventListener("keydown", (e) => {
+  const count = proximityCurrentNeighbors.length;
+  if (!count) return;
+  const current = proximityFocusIdx ?? 0;
+  // stopPropagation so the app's global ArrowLeft/Right palette-tile
+  // navigation (bound on document) doesn't also fire and re-render this
+  // plot out from under us mid-navigation.
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+    e.preventDefault();
+    e.stopPropagation();
+    proximityFocusIdx = (current + 1) % count;
+    updateProximityDisplay();
+  } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+    e.preventDefault();
+    e.stopPropagation();
+    proximityFocusIdx = (current - 1 + count) % count;
+    updateProximityDisplay();
+  } else if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    e.stopPropagation();
+    proximityPinnedIdx = proximityPinnedIdx === current ? null : current;
+    updateProximityDisplay();
+  } else if (e.key === "Escape" && proximityPinnedIdx !== null) {
+    e.preventDefault();
+    e.stopPropagation();
+    proximityPinnedIdx = null;
+    updateProximityDisplay();
+  }
 });
 
 document.addEventListener("pointerdown", (e) => {
@@ -1444,15 +1528,32 @@ eyedropperBtn.addEventListener("click", async () => {
 
 function updateInputSwatch(query) {
   const q = query.trim();
-  if (!q) { colorInputSwatch.hidden = true; colorAddInput.classList.remove("has-swatch"); return; }
+  if (!q) {
+    colorInputSwatch.hidden = true;
+    colorInputName.hidden = true;
+    colorAddInput.classList.remove("has-swatch", "has-name");
+    return;
+  }
   const hex = App.palette.parseColor(q);
   if (hex) {
     colorInputSwatch.style.background = hex;
     colorInputSwatch.hidden = false;
     colorAddInput.classList.add("has-swatch");
+
+    const name = App.names.isLoaded() ? App.names.findNearest(hex) : null;
+    if (name) {
+      colorInputName.textContent = name;
+      colorInputName.title = name;
+      colorInputName.hidden = false;
+      colorAddInput.classList.add("has-name");
+    } else {
+      colorInputName.hidden = true;
+      colorAddInput.classList.remove("has-name");
+    }
   } else {
     colorInputSwatch.hidden = true;
-    colorAddInput.classList.remove("has-swatch");
+    colorInputName.hidden = true;
+    colorAddInput.classList.remove("has-swatch", "has-name");
   }
 }
 

@@ -1576,6 +1576,88 @@ select.btn option {
 }
 
 /* ------------------------------------------------------------------ */
+/* Similar Colors (proximity)                                           */
+/* ------------------------------------------------------------------ */
+.plt-proximity-metric-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.plt-proximity-metric-row label {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.plt-proximity-plot-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.plt-proximity-plot {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-1);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-soft);
+}
+
+.plt-proximity-tooltip {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 170px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--page-bg);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+  font-size: 11px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.plt-proximity-tooltip-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-soft);
+}
+
+.plt-proximity-tooltip-text strong {
+  display: block;
+  font-size: 11px;
+}
+
+.plt-proximity-tooltip-text span {
+  opacity: 0.7;
+  font-size: 10px;
+}
+
+.plt-tile--proximity-active {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.plt-tile-badge {
+  font-size: 9px;
+  font-weight: 750;
+  color: rgba(80, 140, 255, 0.95);
+  line-height: 1.2;
+}
+
+.plt-tile--small .plt-tile-badge { font-size: 8px; }
+
+/* ------------------------------------------------------------------ */
 /* WCAG health badge variants                                           */
 /* ------------------------------------------------------------------ */
 .plt-badge--good { background: rgba(74, 222, 128, 0.22); color: inherit; }

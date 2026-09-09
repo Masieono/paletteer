@@ -24,6 +24,17 @@ const selectedWcagRow     = document.getElementById("selectedWcagRow");
 const selectedUseAsSeedBtn = document.getElementById("selectedUseAsSeedBtn");
 const selectedColorName    = document.getElementById("selectedColorName");
 
+const proximityMetricSelect = document.getElementById("proximityMetricSelect");
+const proximityPlot         = document.getElementById("proximityPlot");
+const proximityTrack        = document.getElementById("proximityTrack");
+const proximityTooltip      = document.getElementById("proximityTooltip");
+
+let proximityCurrentHex = null;
+let proximityCurrentNeighbors = [];
+let proximityDots = []; // [{x, y, r}] in canvas CSS-pixel space, indexed like proximityCurrentNeighbors
+let proximityHoverIdx = null;  // transient — mouse over a dot or its list tile
+let proximityPinnedIdx = null; // sticky — set by clicking a dot (also serves touch/tap)
+
 const wcagHealthBadge     = document.getElementById("wcagHealthBadge");
 
 const paletteActions      = document.getElementById("paletteActions");
@@ -299,6 +310,7 @@ function renderAll() {
   if (generateDetails.open && !tabRandom.hidden) renderRandom();
   if (generateDetails.open && !tabMix.hidden)    renderMix();
   if (accessibilityDetails.open && !tabColorblind.hidden) renderColorblind();
+  renderProximity();
 }
 
 // -------------------------
@@ -365,6 +377,7 @@ function selectTile(idx) {
   selectedTileIdx = idx;
   updateTileSelection();
   renderTintShade();
+  renderProximity();
 }
 
 // Update name labels across all rendered tiles (called after names load)
@@ -657,7 +670,7 @@ function makeFullTile(item, idx, selected) {
 // -------------------------
 // Small tile factory (tint/shade — includes hover action buttons)
 // -------------------------
-function makeTintShadeTile(hex) {
+function makeTintShadeTile(hex, opts = {}) {
   const tile = document.createElement("div");
   tile.className = "plt-tile plt-tile--small";
   tile.setAttribute("role", "listitem");
@@ -701,12 +714,19 @@ function makeTintShadeTile(hex) {
 
   const nameLabel = document.createElement("span");
   nameLabel.className = "plt-tile-name";
-  const tintName = App.names.isLoaded() ? (App.names.findNearest(hex) || "") : "";
+  const tintName = opts.name != null ? opts.name : (App.names.isLoaded() ? (App.names.findNearest(hex) || "") : "");
   nameLabel.textContent = tintName;
   if (tintName) nameLabel.title = tintName;
 
   footer.appendChild(hexLabel);
   footer.appendChild(nameLabel);
+
+  if (opts.badge) {
+    const badgeLabel = document.createElement("span");
+    badgeLabel.className = "plt-tile-badge";
+    badgeLabel.textContent = opts.badge;
+    footer.appendChild(badgeLabel);
+  }
   tile.appendChild(swatch);
   tile.appendChild(footer);
 
@@ -957,6 +977,238 @@ function renderTintShade() {
     }
     tintShadeTrack.appendChild(tile);
   });
+}
+
+// -------------------------
+// Render: Nearby Named Colors (proximity list + plot)
+// -------------------------
+function renderProximity() {
+  const palette = App.state.get().palette;
+  if (selectedTileIdx === null || selectedTileIdx >= palette.length) {
+    proximityTrack.innerHTML = "";
+    return;
+  }
+  const hex = palette[selectedTileIdx].hex;
+
+  if (!App.names.isLoaded()) {
+    proximityTrack.innerHTML = "";
+    const msg = document.createElement("p");
+    msg.className = "plt-harmony-desc";
+    msg.textContent = "Loading color names…";
+    proximityTrack.appendChild(msg);
+    App.names.load().then(() => renderProximity());
+    return;
+  }
+
+  const metric = proximityMetricSelect.value;
+  const neighbors = App.names.findNearestN(hex, { metric, n: 30 });
+
+  proximityCurrentHex = hex;
+  proximityCurrentNeighbors = neighbors;
+  proximityHoverIdx = null;
+  proximityPinnedIdx = null;
+
+  proximityTrack.innerHTML = "";
+  neighbors.forEach((nb, i) => {
+    const tile = makeTintShadeTile(nb.hex, { name: nb.name, badge: `${Math.round(nb.percent)}%` });
+    tile.addEventListener("mouseenter", () => { proximityHoverIdx = i; updateProximityDisplay(); });
+    tile.addEventListener("mouseleave", () => { proximityHoverIdx = null; updateProximityDisplay(); });
+    proximityTrack.appendChild(tile);
+  });
+
+  drawProximityPlot(hex, neighbors, null);
+  updateProximityTooltip(null);
+}
+
+// Effective highlight = whichever dot is under the mouse, falling back to a
+// pinned (clicked) one — keeps compass dots and list tiles identifiable
+// even when they're too visually similar to tell apart on sight.
+function updateProximityDisplay() {
+  const idx = proximityHoverIdx !== null ? proximityHoverIdx : proximityPinnedIdx;
+  Array.from(proximityTrack.children).forEach((tile, i) => {
+    tile.classList.toggle("plt-tile--proximity-active", i === idx);
+  });
+  drawProximityPlot(proximityCurrentHex, proximityCurrentNeighbors, idx);
+  updateProximityTooltip(idx);
+}
+
+function updateProximityTooltip(idx) {
+  if (idx === null || !proximityCurrentNeighbors[idx]) {
+    proximityTooltip.hidden = true;
+    return;
+  }
+  const nb = proximityCurrentNeighbors[idx];
+  const dot = proximityDots[idx];
+  proximityTooltip.hidden = false;
+  proximityTooltip.innerHTML = "";
+
+  const swatch = document.createElement("span");
+  swatch.className = "plt-proximity-tooltip-swatch";
+  swatch.style.background = nb.hex;
+
+  const text = document.createElement("span");
+  text.className = "plt-proximity-tooltip-text";
+  const strong = document.createElement("strong");
+  strong.textContent = nb.name;
+  const sub = document.createElement("span");
+  sub.textContent = `${nb.hex} · ${Math.round(nb.percent)}%`;
+  text.appendChild(strong);
+  text.appendChild(sub);
+
+  proximityTooltip.appendChild(swatch);
+  proximityTooltip.appendChild(text);
+
+  if (dot) {
+    const size = proximityPlot.clientWidth || 320;
+    let left = dot.x + 12;
+    let top = dot.y - 12;
+    if (left > size - 172) left = Math.max(0, dot.x - 172);
+    if (top < 0) top = dot.y + 12;
+    proximityTooltip.style.left = `${left}px`;
+    proximityTooltip.style.top = `${top}px`;
+  }
+}
+
+function hitTestProximity(e) {
+  const rect = proximityPlot.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  let best = null, bestDist = Infinity;
+  proximityDots.forEach((d, i) => {
+    const dist = Math.hypot(d.x - x, d.y - y);
+    const hitRadius = Math.max(d.r + 4, 8);
+    if (dist <= hitRadius && dist < bestDist) { bestDist = dist; best = i; }
+  });
+  return best;
+}
+
+proximityPlot.addEventListener("mousemove", (e) => {
+  const idx = hitTestProximity(e);
+  proximityPlot.style.cursor = idx !== null ? "pointer" : "default";
+  if (idx !== proximityHoverIdx) { proximityHoverIdx = idx; updateProximityDisplay(); }
+});
+
+proximityPlot.addEventListener("mouseleave", () => {
+  if (proximityHoverIdx !== null) { proximityHoverIdx = null; updateProximityDisplay(); }
+});
+
+proximityPlot.addEventListener("click", (e) => {
+  const idx = hitTestProximity(e);
+  proximityPinnedIdx = (idx !== null && proximityPinnedIdx === idx) ? null : idx;
+  updateProximityDisplay();
+});
+
+document.addEventListener("pointerdown", (e) => {
+  if (proximityPinnedIdx !== null && !proximityPlot.contains(e.target)) {
+    proximityPinnedIdx = null;
+    updateProximityDisplay();
+  }
+});
+
+// Relative "compass" plot: selected color pinned at center, neighbors placed
+// by hue/lightness offset from it; dot size/opacity encodes overall
+// closeness under the chosen metric (covers the dimension the axes can't).
+function drawProximityPlot(hex, neighbors, highlightIdx = null) {
+  const dpr = window.devicePixelRatio || 1;
+  const size = proximityPlot.clientWidth || 420;
+  proximityPlot.width = size * dpr;
+  proximityPlot.height = size * dpr;
+  const ctx = proximityPlot.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+  proximityDots = [];
+  if (!neighbors.length) return;
+
+  const rootStyles = getComputedStyle(document.documentElement);
+  // Structural lines stay subtle; labels need to actually be readable, so they
+  // get the real (near-black/near-white) text color, not the divider tint.
+  const gridColor  = rootStyles.getPropertyValue("--border").trim() || "rgba(127,127,127,0.35)";
+  const labelColor = getComputedStyle(document.body).color || "currentColor";
+  const accentColor = rootStyles.getPropertyValue("--accent").trim() || "rgba(80,140,255,0.95)";
+
+  const cx = size / 2, cy = size / 2;
+  // Margin sized to fit "hue +"/"hue -" outside the circle on the sides,
+  // matching how "lighter"/"darker" sit outside it on the top/bottom.
+  const margin = 46;
+  const maxRadius = size / 2 - margin;
+
+  ctx.strokeStyle = gridColor;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - maxRadius, cy); ctx.lineTo(cx + maxRadius, cy);
+  ctx.moveTo(cx, cy - maxRadius); ctx.lineTo(cx, cy + maxRadius);
+  ctx.stroke();
+  [0.5, 1].forEach(f => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, maxRadius * f, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = labelColor;
+  ctx.font = "700 11px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("lighter", cx, cy - maxRadius - 12);
+  ctx.fillText("darker", cx, cy + maxRadius + 20);
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText("hue +", cx + maxRadius + 6, cy);
+  ctx.textAlign = "right";
+  ctx.fillText("hue −", cx - maxRadius - 6, cy);
+  ctx.textBaseline = "alphabetic";
+
+  const baseHsl = App.palette.hexToHsl(hex);
+  const maxDist = Math.max(...neighbors.map(n => n.distance), 1e-6);
+
+  // Per-axis offsets from the selected color, in hue-degrees and lightness-fraction
+  const offsets = neighbors.map(nb => {
+    const nbHsl = App.palette.hexToHsl(nb.hex);
+    let dh = nbHsl.h - baseHsl.h;
+    if (dh > 180) dh -= 360;
+    if (dh < -180) dh += 360;
+    return { nb, dh, dl: nbHsl.l - baseHsl.l };
+  });
+
+  // Zoom each axis to the actual spread of the shown neighbors (floored so a
+  // tight cluster of near-duplicates doesn't get blown up into false spread)
+  const maxDh = Math.max(...offsets.map(o => Math.abs(o.dh)), 8);
+  const maxDl = Math.max(...offsets.map(o => Math.abs(o.dl)), 0.04);
+
+  offsets.forEach(({ nb, dh, dl }, i) => {
+    const x = cx + (dh / maxDh) * maxRadius * 0.9;
+    const y = cy - (dl / maxDl) * maxRadius * 0.9;
+
+    const closeness = 1 - (nb.distance / maxDist);
+    const r = 3 + closeness * 6;
+    proximityDots.push({ x, y, r });
+
+    ctx.beginPath();
+    ctx.fillStyle = nb.hex;
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.55 + closeness * 0.45;
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    if (i === highlightIdx) {
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 2.5;
+      ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  });
+  ctx.globalAlpha = 1;
+
+  ctx.beginPath();
+  ctx.fillStyle = hex;
+  ctx.strokeStyle = labelColor;
+  ctx.lineWidth = 2;
+  ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
 }
 
 // -------------------------
@@ -2041,6 +2293,16 @@ function renderColorblind() {
 accessibilityDetails.addEventListener("toggle", () => {
   if (accessibilityDetails.open && !tabColorblind.hidden) renderColorblind();
 });
+
+proximityMetricSelect.addEventListener("change", () => {
+  renderProximity();
+});
+
+// Redraw the proximity plot on theme change (manual toggle or system pref) —
+// it draws directly from CSS variables so a stale canvas would keep the old palette.
+new MutationObserver(() => {
+  renderProximity();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
 // -------------------------
 // Render: random palette

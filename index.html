@@ -90,6 +90,21 @@
         <div id="selectedWcagRow" class="plt-selected-wcag mt-12"></div>
         <p class="plt-selected-shades-head">Tints &amp; Shades</p>
         <div id="tintShadeTrack" class="plt-track plt-track--small plt-track--preview" role="list" aria-label="Tints and shades"></div>
+
+        <p class="plt-selected-shades-head">Similar Colors</p>
+        <div class="plt-proximity-metric-row">
+          <label for="proximityMetricSelect">Distance metric</label>
+          <select id="proximityMetricSelect" class="btn secondary small">
+            <option value="rgb">RGB Euclidean (matches Colordle)</option>
+            <option value="lab">Lab &Delta;E (perceptual)</option>
+            <option value="oklab">OKLCH (perceptual)</option>
+          </select>
+        </div>
+        <div class="plt-proximity-plot-wrap mt-12">
+          <canvas id="proximityPlot" class="plt-proximity-plot" role="img" aria-label="Plot of similar named colors relative to the selected color. Hover or tap a dot to identify it."></canvas>
+          <div id="proximityTooltip" class="plt-proximity-tooltip" hidden></div>
+        </div>
+        <div id="proximityTrack" class="plt-track plt-track--small plt-track--preview mt-12" role="list" aria-label="Similar named colors"></div>
       </section>
 
       <!-- Generate (tabbed: Harmony · Scale · Extract from Image) -->

@@ -24,10 +24,18 @@
   --accent: rgba(80, 140, 255, 0.95);
   --accent-soft: rgba(80, 140, 255, 0.18);
   --accent-ring: rgba(80, 140, 255, 0.22);
+  --accent-hover: rgba(80, 140, 255, 0.75);
+  --accent-focus: rgba(80, 140, 255, 0.85);
+  --accent-strong: rgba(80, 140, 255, 0.98);
 
   --danger: rgba(255, 90, 90, 0.95);
   --danger-soft: rgba(255, 90, 90, 0.18);
   --danger-ring: rgba(255, 90, 90, 0.20);
+
+  --success: rgba(74, 222, 128, 0.85);
+  --success-strong: rgba(74, 222, 128, 0.22);
+  --success-medium: rgba(74, 222, 128, 0.16);
+  --success-faint: rgba(74, 222, 128, 0.12);
 
   --focus-ring: 0 0 0 3px rgba(80, 140, 255, 0.30);
 
@@ -192,7 +200,7 @@ textarea {
 input[type="text"]:hover,
 textarea:hover,
 .select:hover {
-  border-color: rgba(80, 140, 255, 0.75);
+  border-color: var(--accent-hover);
 }
 
 input[type="text"]:focus,
@@ -246,7 +254,7 @@ textarea:focus-visible,
 .setting-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   flex-wrap: wrap;
 }
@@ -254,8 +262,18 @@ textarea:focus-visible,
 .setting-label {
   display: inline-block;
   margin: 0;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.65;
   white-space: nowrap;
+}
+
+/* "Selected Color" reuses .setting-label as a section heading, not a form
+   field label — keep it at full heading weight regardless of the above. */
+.plt-selected-header .setting-label {
+  font-size: inherit;
+  font-weight: 750;
+  opacity: 1;
 }
 
 .setting-choices {
@@ -312,14 +330,14 @@ textarea:focus-visible,
 }
 
 .choice-pill:hover {
-  border-color: rgba(80, 140, 255, 0.95);
-  box-shadow: 0 0 0 3px rgba(80, 140, 255, 0.18);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
   transform: translateY(-1px);
 }
 
 .choice-pill:has(input:checked) {
-  border-color: rgba(80,140,255,0.95);
-  background: rgba(80,140,255,0.18);
+  border-color: var(--accent);
+  background: var(--accent-soft);
   box-shadow: 0 0 0 2px rgba(80,140,255,0.14);
 }
 
@@ -438,8 +456,8 @@ textarea:focus-visible,
 
 .options:hover,
 .options:focus-visible {
-  border-color: rgba(80, 140, 255, 0.85);
-  box-shadow: 0 0 0 3px rgba(80, 140, 255, 0.18);
+  border-color: var(--accent-focus);
+  box-shadow: 0 0 0 3px var(--accent-soft);
   background: rgba(80, 140, 255, 0.06);
   transform: translateY(-1px);
 }
@@ -495,19 +513,19 @@ textarea:focus-visible,
 }
 
 .dropzone:hover {
-  border-color: rgba(80, 140, 255, 0.85);
-  box-shadow: 0 0 0 3px rgba(80, 140, 255, 0.18);
+  border-color: var(--accent-focus);
+  box-shadow: 0 0 0 3px var(--accent-soft);
   transform: translateY(-1px);
 }
 
 .dropzone.dragover {
-  border-color: rgba(80, 140, 255, 0.98);
+  border-color: var(--accent-strong);
   background: rgba(80, 140, 255, 0.10);
   box-shadow: 0 0 0 4px rgba(80, 140, 255, 0.25);
 }
 
 textarea.dragover {
-  border-color: rgba(80, 140, 255, 0.98);
+  border-color: var(--accent-strong);
   box-shadow: 0 0 0 4px rgba(80, 140, 255, 0.20);
 }
 
@@ -515,16 +533,16 @@ textarea.dragover {
 /* Details cards                                                        */
 /* ------------------------------------------------------------------ */
 .details-card {
-  border: 1px solid rgba(127,127,127,0.35);
-  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
   padding: 0;
-  background: rgba(127,127,127,0.06);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
   transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, transform 0.05s ease;
 }
 
 .details-card:hover {
-  border-color: rgba(80, 140, 255, 0.75);
+  border-color: var(--accent-hover);
   box-shadow: 0 0 0 3px rgba(80, 140, 255, 0.14);
   transform: none;
 }
@@ -760,7 +778,7 @@ html[data-theme="light"] .settings-menu {
   outline: none;
 }
 
-.plt-add-input:hover { border-color: rgba(80, 140, 255, 0.75); }
+.plt-add-input:hover { border-color: var(--accent-hover); }
 .plt-add-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(80, 140, 255, 0.20); }
 
 /* ------------------------------------------------------------------ */
@@ -863,7 +881,7 @@ html[data-theme="light"] .settings-menu {
 }
 
 .plt-tile.selected {
-  border-color: rgba(80, 140, 255, 0.85);
+  border-color: var(--accent-focus);
   box-shadow: 0 0 0 3px rgba(80, 140, 255, 0.25);
 }
 
@@ -1030,7 +1048,7 @@ html[data-theme="light"] .settings-menu {
 }
 
 .plt-tile--small .plt-tile-name {
-  font-size: 7.5px;
+  font-size: 8px;
   max-width: 66px;
   min-height: 9px;
 }
@@ -1198,7 +1216,7 @@ html[data-theme="light"] .settings-menu {
   color: transparent;
 }
 
-.plt-wcag-pass { background: rgba(74, 222, 128, 0.12); }
+.plt-wcag-pass { background: var(--success-faint); }
 .plt-wcag-fail { background: rgba(255, 90, 90, 0.10); opacity: 0.65; }
 
 .plt-wcag-ratio {
@@ -1472,6 +1490,19 @@ select.btn option {
 /* ------------------------------------------------------------------ */
 /* Selected color panel                                                 */
 /* ------------------------------------------------------------------ */
+/* Shares .details-card's border/background/shadow with Generate/Adjustments/
+   etc. for a consistent "card" look, but isn't a <details> — no summary/body
+   split, so it needs its own padding — and it's always-visible/non-collapsible,
+   so the hover glow (a "click to expand" affordance) is switched off. */
+#tintShadeSection.details-card {
+  padding: var(--space-4);
+}
+
+#tintShadeSection.details-card:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
 .plt-selected-header {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -1585,35 +1616,39 @@ select.btn option {
   width: fit-content;
 }
 
-.plt-selected-wcag-badge.pass-aaa { background: rgba(74, 222, 128, 0.22); }
-.plt-selected-wcag-badge.pass-aa  { background: rgba(74, 222, 128, 0.16); }
+.plt-selected-wcag-badge.pass-aaa { background: var(--success-strong); }
+.plt-selected-wcag-badge.pass-aa  { background: var(--success-medium); }
 .plt-selected-wcag-badge.pass-lg  { background: rgba(251, 191, 36, 0.22); }
 .plt-selected-wcag-badge.fail     { background: rgba(255, 90, 90, 0.18); }
 
-.plt-selected-shades-head {
-  font-weight: 750;
-  font-size: 13px;
-  margin: 14px 0 6px;
-  opacity: 0.85;
+/* Nested inside the Selected Color panel, which is already a boxed card —
+   drop the outer card chrome and use a plain divider so three of them
+   stacked don't look like boxes within a box. */
+.plt-selected-subsection {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border-top: 1px solid var(--border-soft);
 }
+
+.plt-selected-subsection:hover {
+  border-color: transparent;
+  border-top-color: var(--border-soft);
+  box-shadow: none;
+}
+
+.plt-selected-subsection summary {
+  padding: 10px 0;
+  font-size: 13px;
+}
+
+.plt-selected-subsection .details-body { padding: 0 0 12px; }
 
 /* ------------------------------------------------------------------ */
 /* Similar Colors (proximity)                                           */
 /* ------------------------------------------------------------------ */
-.plt-proximity-metric-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.plt-proximity-metric-row label {
-  font-size: 12px;
-  font-weight: 600;
-  opacity: 0.65;
-  white-space: nowrap;
-}
-
 .plt-proximity-plot-wrap {
   position: relative;
   width: 100%;
@@ -1691,18 +1726,16 @@ select.btn option {
 }
 
 .plt-tile-badge {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 750;
-  color: rgba(80, 140, 255, 0.95);
+  color: var(--accent);
   line-height: 1.2;
 }
-
-.plt-tile--small .plt-tile-badge { font-size: 8px; }
 
 /* ------------------------------------------------------------------ */
 /* WCAG health badge variants                                           */
 /* ------------------------------------------------------------------ */
-.plt-badge--good { background: rgba(74, 222, 128, 0.22); color: inherit; }
+.plt-badge--good { background: var(--success-strong); color: inherit; }
 .plt-badge--warn { background: rgba(251, 191, 36, 0.25); color: inherit; }
 .plt-badge--bad  { background: rgba(255, 90, 90, 0.22);  color: inherit; }
 
@@ -1785,7 +1818,7 @@ select.btn option {
 }
 
 .plt-tab:hover {
-  border-color: rgba(80, 140, 255, 0.75);
+  border-color: var(--accent-hover);
   opacity: 0.9;
 }
 

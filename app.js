@@ -25,7 +25,17 @@ const selectedWcagRow     = document.getElementById("selectedWcagRow");
 const selectedUseAsSeedBtn = document.getElementById("selectedUseAsSeedBtn");
 const selectedColorName    = document.getElementById("selectedColorName");
 
+const colorInfoDetails      = document.getElementById("colorInfoDetails");
+const tintShadeDetails      = document.getElementById("tintShadeDetails");
+const proximityDetails      = document.getElementById("proximityDetails");
 const proximityMetricSelect = document.getElementById("proximityMetricSelect");
+const proximityAxisSelect   = document.getElementById("proximityAxisSelect");
+const proximityModeSelect   = document.getElementById("proximityModeSelect");
+const proximityCountInput   = document.getElementById("proximityCountInput");
+const proximityThresholdInput = document.getElementById("proximityThresholdInput");
+const proximityCountRow     = document.getElementById("proximityCountRow");
+const proximityThresholdRow = document.getElementById("proximityThresholdRow");
+const proximityDedupeCheckbox = document.getElementById("proximityDedupeCheckbox");
 const proximityPlot         = document.getElementById("proximityPlot");
 const proximityTrack        = document.getElementById("proximityTrack");
 const proximityTooltip      = document.getElementById("proximityTooltip");
@@ -222,12 +232,16 @@ App.names.load().then(() => {
 // Show eyedropper if supported
 if ("EyeDropper" in window) eyedropperBtn.hidden = false;
 
-// Deselect tile when clicking outside the palette track and tint/shade section
+// Deselect tile when clicking somewhere genuinely unrelated — but not for
+// interacting with the other collapsible sections (Generate/Adjustments/
+// Accessibility/Export), since exploring those is normal workflow and
+// shouldn't silently drop your current selection.
 document.addEventListener("pointerdown", (e) => {
   if (selectedTileIdx === null) return;
   const clickedTile = e.target.closest(".plt-tile");
   if (clickedTile && paletteTrack.contains(clickedTile)) return;
   if (tintShadeSection.contains(e.target)) return;
+  if (e.target.closest(".details-card")) return;
   selectedTileIdx = null;
   updateTileSelection();
   tintShadeSection.hidden = true;
@@ -314,7 +328,7 @@ function renderAll() {
   if (generateDetails.open && !tabRandom.hidden) renderRandom();
   if (generateDetails.open && !tabMix.hidden)    renderMix();
   if (accessibilityDetails.open && !tabColorblind.hidden) renderColorblind();
-  renderProximity();
+  if (proximityDetails.open) renderProximity();
 }
 
 // -------------------------
@@ -381,7 +395,7 @@ function selectTile(idx) {
   selectedTileIdx = idx;
   updateTileSelection();
   renderTintShade();
-  renderProximity();
+  if (proximityDetails.open) renderProximity();
 }
 
 // Update name labels across all rendered tiles (called after names load)
@@ -597,7 +611,7 @@ function makeFullTile(item, idx, selected) {
     const origHTML = copyBtn.innerHTML;
     navigator.clipboard.writeText(hex).then(() => {
       copyBtn.textContent = "✓";
-      copyBtn.style.cssText = "background:rgba(74,222,128,0.85);color:#000;";
+      copyBtn.style.cssText = "background:var(--success);color:#000;";
       setTimeout(() => { copyBtn.innerHTML = origHTML; copyBtn.style.cssText = ""; }, 1200);
     }).catch(() => toast("Copy failed.", "error"));
   });
@@ -768,7 +782,7 @@ function makeTintShadeTile(hex, opts = {}) {
     const origHTML = copyBtn.innerHTML;
     navigator.clipboard.writeText(hex).then(() => {
       copyBtn.textContent = "✓";
-      copyBtn.style.cssText = "background:rgba(74,222,128,0.85);color:#000;";
+      copyBtn.style.cssText = "background:var(--success);color:#000;";
       setTimeout(() => { copyBtn.innerHTML = origHTML; copyBtn.style.cssText = ""; }, 1200);
     }).catch(() => toast("Copy failed.", "error"));
   });
@@ -848,7 +862,7 @@ function makeSmallTile(hex) {
     const origHTML = copyBtn.innerHTML;
     navigator.clipboard.writeText(hex).then(() => {
       copyBtn.textContent = "✓";
-      copyBtn.style.cssText = "background:rgba(74,222,128,0.85);color:#000;";
+      copyBtn.style.cssText = "background:var(--success);color:#000;";
       setTimeout(() => { copyBtn.innerHTML = origHTML; copyBtn.style.cssText = ""; }, 1200);
     }).catch(() => toast("Copy failed.", "error"));
   });
@@ -920,7 +934,7 @@ function renderTintShade() {
       const origHTML = btn.innerHTML;
       navigator.clipboard.writeText(copy).then(() => {
         btn.textContent = "✓";
-        btn.style.cssText = "background:rgba(74,222,128,0.85);color:#000;";
+        btn.style.cssText = "background:var(--success);color:#000;";
         setTimeout(() => { btn.innerHTML = origHTML; btn.style.cssText = ""; }, 1200);
       }).catch(() => toast("Copy failed.", "error"));
     });
@@ -976,7 +990,7 @@ function renderTintShade() {
   shades.forEach(h => {
     const tile = makeTintShadeTile(h);
     if (h.toLowerCase() === hex.toLowerCase()) {
-      tile.style.outline = "2px solid rgba(80,140,255,0.85)";
+      tile.style.outline = "2px solid var(--accent-focus)";
       tile.style.outlineOffset = "2px";
     }
     tintShadeTrack.appendChild(tile);
@@ -1000,12 +1014,16 @@ function renderProximity() {
     msg.className = "plt-harmony-desc";
     msg.textContent = "Loading color names…";
     proximityTrack.appendChild(msg);
-    App.names.load().then(() => renderProximity());
+    App.names.load().then(() => { if (proximityDetails.open) renderProximity(); });
     return;
   }
 
   const metric = proximityMetricSelect.value;
-  const neighbors = App.names.findNearestN(hex, { metric, n: 32 });
+  const mode = proximityModeSelect.value;
+  const n = Math.max(1, parseInt(proximityCountInput.value, 10) || 32);
+  const minPercent = Math.max(0, Math.min(100, parseInt(proximityThresholdInput.value, 10) || 90));
+  const dedupe = proximityDedupeCheckbox.checked ? 0 : 12;
+  const neighbors = App.names.findNearestN(hex, { metric, mode, n, minPercent, dedupe });
 
   proximityCurrentHex = hex;
   proximityCurrentNeighbors = neighbors;
@@ -1189,9 +1207,29 @@ document.addEventListener("pointerdown", (e) => {
   }
 });
 
+// Compass axis presets — hue wraps circularly (needs the shortest-path
+// wraparound below), lightness/saturation are plain 0-1 fractions.
+const AXIS_CHANNELS = {
+  hue:        { pos: "hue +",  neg: "hue −",  floor: 8 },
+  lightness:  { pos: "lighter", neg: "darker", floor: 0.04 },
+  saturation: { pos: "sat +",  neg: "sat −",  floor: 0.04 },
+};
+
+function channelDelta(channel, baseHsl, nbHsl) {
+  if (channel === "hue") {
+    let d = nbHsl.h - baseHsl.h;
+    if (d > 180) d -= 360;
+    if (d < -180) d += 360;
+    return d;
+  }
+  if (channel === "saturation") return nbHsl.s - baseHsl.s;
+  return nbHsl.l - baseHsl.l;
+}
+
 // Relative "compass" plot: selected color pinned at center, neighbors placed
-// by hue/lightness offset from it; dot size/opacity encodes overall
-// closeness under the chosen metric (covers the dimension the axes can't).
+// by the two chosen HSL-channel offsets from it; dot size/opacity encodes
+// overall closeness under the chosen metric (covers whatever dimension the
+// axes themselves don't show).
 function drawProximityPlot(hex, neighbors, highlightIdx = null) {
   const dpr = window.devicePixelRatio || 1;
   const size = proximityPlot.clientWidth || 420;
@@ -1232,39 +1270,41 @@ function drawProximityPlot(hex, neighbors, highlightIdx = null) {
     ctx.stroke();
   });
 
+  const [xChannel, yChannel] = (proximityAxisSelect.value || "hue-lightness").split("-");
+  const xInfo = AXIS_CHANNELS[xChannel];
+  const yInfo = AXIS_CHANNELS[yChannel];
+
   ctx.fillStyle = labelColor;
   ctx.font = `700 ${Math.round(11 * scale)}px sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("lighter", cx, cy - maxRadius - 12 * scale);
-  ctx.fillText("darker", cx, cy + maxRadius + 20 * scale);
+  ctx.fillText(yInfo.pos, cx, cy - maxRadius - 12 * scale);
+  ctx.fillText(yInfo.neg, cx, cy + maxRadius + 20 * scale);
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText("hue +", cx + maxRadius + 6 * scale, cy);
+  ctx.fillText(xInfo.pos, cx + maxRadius + 6 * scale, cy);
   ctx.textAlign = "right";
-  ctx.fillText("hue −", cx - maxRadius - 6 * scale, cy);
+  ctx.fillText(xInfo.neg, cx - maxRadius - 6 * scale, cy);
   ctx.textBaseline = "alphabetic";
 
   const baseHsl = App.palette.hexToHsl(hex);
   const maxDist = Math.max(...neighbors.map(n => n.distance), 1e-6);
 
-  // Per-axis offsets from the selected color, in hue-degrees and lightness-fraction
+  // Per-axis offsets from the selected color, in whichever units the chosen
+  // channel uses (hue-degrees, or 0-1 lightness/saturation fraction)
   const offsets = neighbors.map(nb => {
     const nbHsl = App.palette.hexToHsl(nb.hex);
-    let dh = nbHsl.h - baseHsl.h;
-    if (dh > 180) dh -= 360;
-    if (dh < -180) dh += 360;
-    return { nb, dh, dl: nbHsl.l - baseHsl.l };
+    return { nb, dx: channelDelta(xChannel, baseHsl, nbHsl), dy: channelDelta(yChannel, baseHsl, nbHsl) };
   });
 
   // Zoom each axis to the actual spread of the shown neighbors (floored so a
   // tight cluster of near-duplicates doesn't get blown up into false spread)
-  const maxDh = Math.max(...offsets.map(o => Math.abs(o.dh)), 8);
-  const maxDl = Math.max(...offsets.map(o => Math.abs(o.dl)), 0.04);
+  const maxDx = Math.max(...offsets.map(o => Math.abs(o.dx)), xInfo.floor);
+  const maxDy = Math.max(...offsets.map(o => Math.abs(o.dy)), yInfo.floor);
 
-  offsets.forEach(({ nb, dh, dl }, i) => {
-    const x = cx + (dh / maxDh) * maxRadius * 0.9;
-    const y = cy - (dl / maxDl) * maxRadius * 0.9;
+  offsets.forEach(({ nb, dx, dy }, i) => {
+    const x = cx + (dx / maxDx) * maxRadius * 0.9;
+    const y = cy - (dy / maxDy) * maxRadius * 0.9;
 
     const closeness = 1 - (nb.distance / maxDist);
     const r = (3 + closeness * 6) * scale;
@@ -1955,6 +1995,9 @@ factoryResetBtn.addEventListener("click", () => {
   adjDetails.open = false;
   accessibilityDetails.open = false;
   outputDetails.open = false;
+  colorInfoDetails.open = false;
+  tintShadeDetails.open = false;
+  proximityDetails.open = false;
 
   // Reset active tabs back to defaults
   activateTab(generateDetails, "harmony");
@@ -2399,14 +2442,41 @@ accessibilityDetails.addEventListener("toggle", () => {
   if (accessibilityDetails.open && !tabColorblind.hidden) renderColorblind();
 });
 
+proximityDetails.addEventListener("toggle", () => {
+  if (proximityDetails.open) renderProximity();
+});
+
 proximityMetricSelect.addEventListener("change", () => {
-  renderProximity();
+  if (proximityDetails.open) renderProximity();
+});
+
+proximityAxisSelect.addEventListener("change", () => {
+  if (proximityDetails.open) renderProximity();
+});
+
+proximityModeSelect.addEventListener("change", () => {
+  const isThreshold = proximityModeSelect.value === "threshold";
+  proximityCountRow.hidden = isThreshold;
+  proximityThresholdRow.hidden = !isThreshold;
+  if (proximityDetails.open) renderProximity();
+});
+
+proximityCountInput.addEventListener("input", () => {
+  if (proximityDetails.open) renderProximity();
+});
+
+proximityThresholdInput.addEventListener("input", () => {
+  if (proximityDetails.open) renderProximity();
+});
+
+proximityDedupeCheckbox.addEventListener("change", () => {
+  if (proximityDetails.open) renderProximity();
 });
 
 // Redraw the proximity plot on theme change (manual toggle or system pref) —
 // it draws directly from CSS variables so a stale canvas would keep the old palette.
 new MutationObserver(() => {
-  renderProximity();
+  if (proximityDetails.open) renderProximity();
 }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
 // -------------------------

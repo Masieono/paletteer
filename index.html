@@ -78,7 +78,7 @@
       </section>
 
       <!-- Selected Color Panel (revealed when a tile is selected) -->
-      <section id="tintShadeSection" class="section" hidden>
+      <section id="tintShadeSection" class="section details-card" hidden>
         <div class="plt-selected-header">
           <span class="setting-label">Selected Color</span>
           <span id="selectedColorName" class="plt-selected-name"></span>
@@ -87,27 +87,71 @@
             <button id="selectedUseAsSeedBtn" type="button" class="btn secondary small">Generate Harmony</button>
           </div>
         </div>
-        <div id="selectedColorInfo" class="plt-selected-info mt-12"></div>
-        <div id="selectedWcagRow" class="plt-selected-wcag mt-12"></div>
-        <p class="plt-selected-shades-head">Tints &amp; Shades</p>
-        <div id="tintShadeTrack" class="plt-track plt-track--small plt-track--preview" role="list" aria-label="Tints and shades"></div>
+        <details class="details-card plt-selected-subsection mt-12" id="colorInfoDetails">
+          <summary>Color Information</summary>
+          <div class="details-body">
+            <div id="selectedColorInfo" class="plt-selected-info"></div>
+            <div id="selectedWcagRow" class="plt-selected-wcag mt-12"></div>
+          </div>
+        </details>
 
-        <p class="plt-selected-shades-head">Similar Colors</p>
-        <div class="plt-proximity-metric-row">
-          <label for="proximityMetricSelect">Distance metric</label>
-          <select id="proximityMetricSelect" class="btn secondary small">
-            <option value="rgb">RGB Euclidean (matches Colordle)</option>
-            <option value="lab">Lab &Delta;E (perceptual)</option>
-            <option value="oklab">OKLCH (perceptual)</option>
-          </select>
-        </div>
-        <div class="plt-proximity-plot-wrap mt-12">
-          <canvas id="proximityPlot" class="plt-proximity-plot" tabindex="0" role="img"
-            aria-label="Compass plot of similar named colors relative to the selected color. Use arrow keys to move between colors, Enter to pin the highlighted one, Escape to clear."></canvas>
-          <div id="proximityTooltip" class="plt-proximity-tooltip" hidden></div>
-        </div>
-        <span id="proximityLiveRegion" class="sr-only" aria-live="polite"></span>
-        <div id="proximityTrack" class="plt-track plt-track--small plt-track--preview mt-12" role="list" aria-label="Similar named colors"></div>
+        <details class="details-card plt-selected-subsection" id="tintShadeDetails">
+          <summary>Tints &amp; Shades</summary>
+          <div class="details-body">
+            <div id="tintShadeTrack" class="plt-track plt-track--small plt-track--preview" role="list" aria-label="Tints and shades"></div>
+          </div>
+        </details>
+
+        <details class="details-card plt-selected-subsection" id="proximityDetails">
+          <summary>Similar Colors</summary>
+          <div class="details-body">
+            <div class="setting-row">
+              <label class="setting-label" for="proximityMetricSelect">Distance metric</label>
+              <select id="proximityMetricSelect" class="btn secondary small">
+                <option value="rgb">RGB Euclidean (matches Colordle)</option>
+                <option value="lab">Lab &Delta;E (perceptual)</option>
+                <option value="oklab">OKLCH (perceptual)</option>
+              </select>
+            </div>
+            <div class="setting-row mt-12">
+              <label class="setting-label" for="proximityAxisSelect">Compass view</label>
+              <select id="proximityAxisSelect" class="btn secondary small">
+                <option value="hue-lightness">Hue &times; Lightness</option>
+                <option value="hue-saturation">Hue &times; Saturation</option>
+                <option value="lightness-saturation">Lightness &times; Saturation</option>
+              </select>
+            </div>
+            <div class="setting-row mt-12">
+              <label class="setting-label" for="proximityModeSelect">Show</label>
+              <select id="proximityModeSelect" class="btn secondary small">
+                <option value="count">Top N colors</option>
+                <option value="threshold">Colors within a % threshold</option>
+              </select>
+            </div>
+            <div class="setting-row mt-12" id="proximityCountRow">
+              <label class="setting-label" for="proximityCountInput">Count</label>
+              <input id="proximityCountInput" type="number" min="8" max="200" value="32" class="plt-num-input" style="width:72px" />
+            </div>
+            <div class="setting-row mt-12" id="proximityThresholdRow" hidden>
+              <label class="setting-label" for="proximityThresholdInput">Minimum similarity</label>
+              <input id="proximityThresholdInput" type="number" min="1" max="100" value="90" class="plt-num-input" style="width:72px" />
+            </div>
+            <div class="setting-row mt-12">
+              <span class="setting-label">Near-duplicates</span>
+              <label class="plt-inline-check">
+                <input type="checkbox" id="proximityDedupeCheckbox" />
+                <span>Include near-duplicate colors</span>
+              </label>
+            </div>
+            <div class="plt-proximity-plot-wrap mt-12">
+              <canvas id="proximityPlot" class="plt-proximity-plot" tabindex="0" role="img"
+                aria-label="Compass plot of similar named colors relative to the selected color. Use arrow keys to move between colors, Enter to pin the highlighted one, Escape to clear."></canvas>
+              <div id="proximityTooltip" class="plt-proximity-tooltip" hidden></div>
+            </div>
+            <span id="proximityLiveRegion" class="sr-only" aria-live="polite"></span>
+            <div id="proximityTrack" class="plt-track plt-track--small plt-track--preview mt-12" role="list" aria-label="Similar named colors"></div>
+          </div>
+        </details>
       </section>
 
       <!-- Generate (tabbed: Harmony · Scale · Extract from Image) -->
